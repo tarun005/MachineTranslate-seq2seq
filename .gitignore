@@ -1,0 +1,9 @@
+*data*
+faces
+*.json
+training*
+*.pt
+en-fr*
+fr-en*
+hin-en*
+__pycache__*
