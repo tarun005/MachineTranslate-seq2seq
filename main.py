@@ -33,11 +33,11 @@ class Config():
 	max_target_len = 20
 	min_word_freq = 1 ## Common for both the vocab
 	bidirectional=False
-	train_size = 0.95 ## Fraction for train data
+	train_size = 0.97 ## Fraction for train data
 	teacher_forcing_ratio = 0.5
 	n_epochs = 60
-	batch_size = 32
-	lr = 1e-4
+	batch_size = 16
+	lr = 5e-4
 	# gamma = 0.5 ## Put to a value <1 to activate scheduler. 1 to deactivate
 
 	## Use GPU
