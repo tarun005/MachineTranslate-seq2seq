@@ -1,45 +1,50 @@
 import torch , torch.utils.data
 import torch.nn as nn , torch.nn.functional as F
-from nltk.tokenize import word_tokenize
 import numpy as np
-import matplotlib.pyplot as plt
 import sys,time,os
+import argparse
 
 from data_utils import prepare_data
 from encoderRNN import encoder_RNN
-from decoderRNN import decoder_cell
 from decoderAttn_RNN import decoderAttn
 from train import train
-from evaluate import give_idx_to_phrase , generate_translation, BLEU_score
+from evaluate import generate_translation, BLEU_score
 
 class Config():
 
-	root_dir = 'fr-en_europarl'
-	file_name = ['europarl-v7.fr-en.fr' , 'europarl-v7.fr-en.en'] ## format: source - target
-	source = 'FR'
-	target = 'EN'
-	save_path = 'best_model_attention.pt'
+	parser = argparse.ArgumentParser(description="Machine translation using seq2seq deep LSTM architecture.")
+	parser.add_argument('root' , help='Path of the root dir containing the dataset files' , default='.' , nargs='?')
+	parser.add_argument('filenames' , help='One file with tab separated tokens or two files with source and target tokens' ,nargs='+')
+	parser.add_argument('save_path' , help='Filename for saving the model.')
+	parser.add_argument('-attn' , help='Type of attention model', default='dot')
+
+	args = parser.parse_args()
+	root_dir = args.root
+	file_name = args.filenames if len(args.filenames) == 2 else args.filenames[0] 
+	save_path = args.save_path
+	attn_model = args.attn
 
 	start_tok = '<start>'
 	end_tok = '<end>'
 	unknown_tok = '<unk>'
-	delimiter = '#'
+	source = 'lang1'
+	target = 'lang2'
+	delimiter = '\t'
 
-	embedding_size=256
-	hidden_size=256
 	n_layers_encoding=2
 	n_layers_decoding=2
+	bidirectional=True
+	teacher_forcing_ratio = 0.5
+	batch_size = 32
+	lr = 5e-4
+	dropout = 0.4
+	embedding_size=256
+	hidden_size=256
 	max_source_len = 12
 	max_target_len = 20
 	min_word_freq = 1 ## Common for both the vocab
-	bidirectional=False
 	train_size = 0.97 ## Fraction for train data
-	teacher_forcing_ratio = 0.5
 	n_epochs = 23
-	batch_size = 16
-	lr = 5e-4
-	dropout = 0.2
-	# gamma = 0.5 ## Put to a value <1 to activate scheduler. 1 to deactivate
 
 	## Use GPU
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -48,20 +53,21 @@ class Config():
 def main():
 
 	config = Config()
-	data = prepare_data(config , debug=False)
+	data = prepare_data(config , debug=True)
+
+	data.data_loader = {phase: torch.utils.data.DataLoader(data.data[phase], shuffle=False, 
+									batch_size=config.batch_size, num_workers=2) for phase in ['train' , 'val']}
 
 
 	encoder_model = encoder_RNN(config.embedding_size, data.vocab_size[config.source], config.hidden_size , 
 		n_layers=config.n_layers_encoding , bidirectional=config.bidirectional, dropout=config.dropout).to(config.device)
 
-	decoder_hidden_size = 2*config.hidden_size if config.bidirectional else config.hidden_size
-	decoder_model = decoderAttn('dot' , config.embedding_size , data.vocab_size[config.target], decoder_hidden_size, 
+	decoder_model = decoderAttn(config.attn_model , config.embedding_size , data.vocab_size[config.target], config.hidden_size, 
 	                             n_layers=config.n_layers_decoding, dropout=config.dropout).to(config.device)
 
 	loss_criterion = nn.CrossEntropyLoss(reduce=False)
 	encoder_optimizer = torch.optim.Adam(encoder_model.parameters() , lr=config.lr)
 	decoder_optimizer = torch.optim.Adam(decoder_model.parameters() , lr=config.lr*5)
-	# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=config.gamma)
 
 	start = time.time()
 	encoder_model , decoder_model , loss_curve = train(data, config, encoder_model, decoder_model, 
@@ -71,7 +77,7 @@ def main():
 
 
 	for i in np.random.randint(0, len(data.data['train']), 10):
-	    inp_seq = data.data['train'][i][0] + ' eos'
+	    inp_seq = data.data['train'][i][0] + config.end_tok
 	    print(data.data['train'][i][0])
 	    print(data.data['train'][i][1])
 	    gen_sen = generate_translation(inp_seq ,config, encoder_model , decoder_model, data.vocab)
@@ -86,5 +92,5 @@ if __name__ == "__main__":
 	try:
 		config , data = main()
 	except KeyboardInterrupt: ## Often, the code takes too long to run, but life is too short.
-		print()
+		print() ## Message
 		sys.exit(0)

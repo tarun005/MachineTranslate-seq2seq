@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import sys
 import random
+import matplotlib.pyplot as plt
 from evaluate import give_idx_to_phrase , generate_translation, BLEU_score
 from tqdm import tqdm
 
@@ -10,7 +11,6 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
     
 	best_model_wts = (encoder.state_dict() , decoder.state_dict())
 	best_loss = np.inf
-	total_loss = {'train':[] , 'val':[]}
 	teacher_forcing_ratio = config.teacher_forcing_ratio
 	last_epoch_best_loss = np.inf
 
@@ -20,6 +20,8 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
 	else:
 		phases = ['train']
 		eval_phase = 'train'
+
+	total_loss = {phase:[] for phase in phases}
 
     
 	for epoch_id in range(1 , n_epochs+1):
@@ -38,7 +40,7 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
 		    	encoder = encoder.eval()
 		    	decoder = decoder.eval()
 
-		    for input_text , target_text in tqdm(data.data_loader[phase] , file=sys.stdout, position=2, leave=False):
+		    for input_text , target_text in tqdm(data.data_loader[phase] , position=2, leave=False):
 
 		        batch_size = len(input_text)
 		        total_samples += batch_size
@@ -48,10 +50,10 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
 		        decoder.zero_grad()
 		        
 		        input_idx , input_seq_len, sort_idx = data.seq_to_idx(config , input_text)
+		        input_idx = torch.tensor(input_idx , dtype=torch.long).to(config.device) ## [batch_size , input_seq_len]
+
 		        output_idx, output_seq_len , _ = data.seq_to_idx(config, target_text , source=False, sort_idx=sort_idx)
-		        
-		        input_idx = input_idx.to(config.device)  ## [batch_size , input_seq_len]
-		        output_idx = output_idx.to(config.device) ## [batch_size , output_seq_len]
+		        output_idx = torch.tensor(output_idx , dtype=torch.long).to(config.device)  ## [batch_size , output_seq_len]
 		        
 		        with torch.set_grad_enabled(phase == 'train'): 
 		            ## encoding
@@ -146,6 +148,27 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
 	print('#'*10)
 
 	return encoder , decoder , total_loss
+
+
+def plot_loss(loss):
+
+	"""
+	loss is a dictionary with 'train' and 'val' keys
+	"""
+	assert(isinstance(loss , dict))
+	if 'val' in loss:
+		plt.plot(loss['train'], 'k' , linewidth=2.5, label='Train loss')
+		plt.plot(loss['val'], 'r' , linewidth=2.5, label='Val loss')
+	else:
+		plt.plot(loss['train'], 'k' , linewidth=2.5, label='Train loss' )
+
+	plt.legend()
+	plt.title("Loss Plot")
+	plt.xlabel("Epochs")
+	plt.ylabel("Loss")
+	plt.savefig('loss_plot.png' , format='png')
+
+
 
 if __name__ == "__main__":
     raise NotImplementedError("Sub modules are not callable")

@@ -25,7 +25,7 @@ class decoder_cell(nn.Module):
 
         assert(len(self.dest_rnn) == len(hidden_state))
         
-        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) . p=self.dropout)
+        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) , p=self.dropout)
         next_hidden_states = []
 
         ip_v = input_vector
