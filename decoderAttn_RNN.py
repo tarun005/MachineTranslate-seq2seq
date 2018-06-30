@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 class decoderAttn(nn.Module):
     
-    def __init__(self , attn_model, embedding_size , vocab_size, hidden_size, n_layers=1):
+    def __init__(self , attn_model, embedding_size , vocab_size, hidden_size, n_layers=1, dropout=dropout):
         """
         Attn Model should be one of dot or linear.
         """
@@ -14,10 +14,11 @@ class decoderAttn(nn.Module):
 
         self.embedding = nn.Embedding(vocab_size , embedding_size)
 
-        self.rnn = nn.GRU(embedding_size + hidden_size , hidden_size, num_layers=n_layers, batch_first=True)
+        self.rnn = nn.GRU(embedding_size + hidden_size , hidden_size, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.fc = nn.Linear(hidden_size*2 , vocab_size)
 
         self.attention = attention(self.attn_model, hidden_size)
+        self.dropout = dropout
         
     def forward(self, encoding_output, input_token_v , hidden_state):
         
@@ -25,7 +26,7 @@ class decoderAttn(nn.Module):
         ## hidden_state is of shape [n_layers_decoding, batch_size, hidden_size]
         
         context_vector = self.attention(encoding_output , hidden_state[-1]) ## [batch_size , hidden_size]
-        input_vector = F.relu(self.embedding(input_token_v)) ## [batch_size , embedding_size]
+        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) , p=self.dropout) ## [batch_size , embedding_size]
         rnn_input = torch.cat([input_vector , context_vector] , dim=1).unsqueeze(1) ## [batch_size, seq_len=1 ,embedding_size]
 
         op, next_hidden_states = self.rnn(rnn_input , hidden_state)

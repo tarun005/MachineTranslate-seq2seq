@@ -3,15 +3,16 @@ import torch.nn.functional as F
 
 class decoder_cell(nn.Module):
     
-    def __init__(self , embedding_size , vocab_size, hidden_size, n_layers=1):
+    def __init__(self , embedding_size , vocab_size, hidden_size, n_layers=1, dropout=0):
         self.n_layers = n_layers
 
         super(decoder_cell , self).__init__()
         self.embedding = nn.Embedding(vocab_size , embedding_size)
-        self.rnn_cell = nn.GRUCell(embedding_size , hidden_size)
+        self.rnn_cell = nn.GRUCell(embedding_size , hidden_size , dropout=dropout)
         self.fc = nn.Linear(hidden_size , vocab_size)
 
         self.dest_rnn = [self.rnn_cell]*self.n_layers 
+        self.dropout = dropout
         
     def forward(self ,encoding_output, input_token_v , hidden_state):
         
@@ -24,7 +25,7 @@ class decoder_cell(nn.Module):
 
         assert(len(self.dest_rnn) == len(hidden_state))
         
-        input_vector = F.relu(self.embedding(input_token_v))
+        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) . p=self.dropout)
         next_hidden_states = []
 
         ip_v = input_vector
