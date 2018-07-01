@@ -1,7 +1,7 @@
-import torch , torch.nn
-import numpy as np
+import torch
 from nltk.tokenize import word_tokenize
 from nltk.translate import bleu_score
+from data_utils import preprocess_string
 
 def give_idx_to_phrase(config, vocab, inp_idx, target=True):
 
@@ -35,58 +35,54 @@ def give_idx_to_phrase(config, vocab, inp_idx, target=True):
 
 def generate_translation(input_string, config, encoder, decoder, vocab):
 
-    input_idx = [vocab[config.source].get(word , vocab[config.source][config.unknown_tok])
-    													 for word in word_tokenize(input_string)]
-    input_idx = input_idx + [vocab[config.source][config.end_tok]]
+    input_string = preprocess_string(input_string)
 
-    input_idx_tensor = torch.tensor(input_idx , dtype=torch.long).to(config.device)
-    input_idx_tensor = input_idx_tensor.view([1,-1])
-    
-    encoding_output , encoded_embedding = encoder(input_idx_tensor , [len(input_idx)])
-    encoded_embedding = encoded_embedding[-config.n_layers_decoding:]
-    
-    start_token = torch.tensor(vocab[config.target][config.start_tok]).long().to(config.device)
-    start_token = start_token.view(-1)
-    
-    reverse_vocab = {phase:{i:word for word,i in vocab[phase].items()} for phase in [config.source , config.target]}
-    
-    next_token = start_token
-    next_hidden = encoded_embedding
-    stop_condition = False
-    output_tokens = []
-    n_iters = 0
-    
-    while stop_condition is False:
-        output_prob , next_hidden = decoder(encoding_output, next_token , next_hidden)
-        next_token = torch.argmax(output_prob , dim=1)
-        word_token = next_token.item()
+    with torch.no_grad():
+        input_idx = [vocab[config.source].get(word , vocab[config.source][config.unknown_tok])
+        													 for word in word_tokenize(input_string)]
+        input_idx = input_idx + [vocab[config.source][config.end_tok]]
 
-        if n_iters == config.max_target_len or reverse_vocab[config.target][word_token] == config.end_tok:
-            stop_condition = True
+        input_idx_tensor = torch.tensor(input_idx , dtype=torch.long).to(config.device)
+        input_idx_tensor = input_idx_tensor.view([1,-1])
+        
+        encoding_output , encoded_embedding = encoder(input_idx_tensor , [len(input_idx)])
+        encoded_embedding = encoded_embedding[-config.n_layers_decoding:]
+        
+        start_token = torch.tensor(vocab[config.target][config.start_tok]).long().to(config.device).view(-1,1)
+        
+        reverse_vocab = {phase:{i:word for word,i in vocab[phase].items()} for phase in [config.source , config.target]}
+        
+        next_token = start_token
+        next_hidden = encoded_embedding
+        stop_condition = False
+        output_tokens = []
+        n_iters = 0
+        
+        while stop_condition is False:
+            output_prob , next_hidden = decoder(encoding_output, next_token , next_hidden)
+            next_token = torch.argmax(output_prob , dim=2)
+            word_token = next_token.item()
 
-        output_tokens.append(reverse_vocab[config.target][word_token])    
-        n_iters += 1
-    
-    output_string = ' '.join(output_tokens[:-1])
+            if n_iters == config.max_target_len or reverse_vocab[config.target][word_token] == config.end_tok:
+                stop_condition = True
+
+            output_tokens.append(reverse_vocab[config.target][word_token])    
+            n_iters += 1
+        
+    output_string = ' '.join(output_tokens[:-1]) ## Ignore the <eos> string
     return output_string
 
 def BLEU_score(config, gt_caption, sample_caption):
     """
     gt_caption: string or list of string, ground-truth caption
-    sample_caption: string or list of strings, your model's predicted caption
-    Returns unigram BLEU score.
+    sample_caption: string or list of strings, model's predicted caption
+    Returns batch sum of unigram BLEU score.
     """
-    if not isinstance(gt_caption , list):
-        gt_caption = [gt_caption]
-    if not isinstance(sample_caption , list):
-        sample_caption = [sample_caption]
-
-    assert(len(gt_caption) == len(sample_caption))
+    gt = preprocess_string(gt)
+    sample = preprocess_string(sample)
     bleu_scores = 0
 
     for gt , sample in zip(gt_caption , sample_caption):
-        gt = gt.lower()
-        sample = sample.lower()
 
         reference = [x for x in word_tokenize(gt) 
                      if (config.end_tok not in x and config.start_tok not in x and config.unknown_tok not in x)]

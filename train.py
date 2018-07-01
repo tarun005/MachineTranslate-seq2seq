@@ -67,7 +67,7 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
 		            seq_output = []
 		            mask = []
 		            ip_seq = torch.tensor([data.vocab[config.target][config.start_tok]]*batch_size 
-		            		, dtype=torch.long).view([-1]).to(config.device)
+		            		, dtype=torch.long).view([-1,1]).to(config.device)
 
 		            next_hidden = context_vector
 		            use_teacher_forcing = random.random()<teacher_forcing_ratio
@@ -75,20 +75,22 @@ def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer
 
 		            for iter_n in range(max(output_seq_len)): ## Go till length of longest sequence
 
+		            	## curr_op : [batch_size, seq_len=1, vocab_size]
+		            	## next_hidden : [n_layers_decoding, batch_size, hidden_size]
 		                curr_op , next_hidden = decoder(encoding_output, ip_seq , next_hidden)
-		                op_seq_pred = torch.argmax(curr_op , dim=1)
+		                op_seq_pred = torch.argmax(curr_op , dim=2) ## [batch_size , seq_len=1]
 		                predicted_sentence.append(op_seq_pred)
 		                mask += [1 if i>iter_n else 0 for i in output_seq_len] ## Keep creating masks for valid outputs.
 
-		                ip_seq = output_idx[:,iter_n].detach() if use_teacher_forcing else op_seq_pred.detach()
+		                ip_seq = output_idx[:,iter_n:iter_n+1].detach() if use_teacher_forcing else op_seq_pred.detach()
 		                seq_output.append(curr_op)
 
-		            seq_output = torch.stack(seq_output , dim=1) ## [batch_size, output_seq_len, output_size]
-		            predicted_sentence = torch.stack(predicted_sentence , dim=1) ## [batch_size , output_seq_len]
-		            op_size = seq_output.shape[2]
-		            loss_samplewise = loss_criterion(seq_output.view([-1,op_size]) , output_idx.view(-1))
-		            mask_valid = torch.tensor(mask , dtype=torch.long).nonzero()
-		            loss = loss_samplewise[mask_valid].mean()
+		            seq_output = torch.cat(seq_output , dim=1) ## [batch_size, output_seq_len, output_size]
+		            predicted_sentence = torch.cat(predicted_sentence , dim=1) ## [batch_size , output_seq_len]
+		            
+		            mask = torch.tensor(mask , dtype=torch.long).nonzero()
+		            op_size = seq_output.size(2) ## Output vocab size
+		            loss = loss_criterion(seq_output.view([-1,op_size]) , output_idx.view(-1))[mask].mean()
 
 		            gt_sen = give_idx_to_phrase(config , data.vocab, output_idx)
 		            pred_sen = give_idx_to_phrase(config , data.vocab, predicted_sentence)

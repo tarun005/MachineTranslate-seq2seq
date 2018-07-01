@@ -26,11 +26,11 @@ class attention(nn.Module):
         """
 
         if self.attn_model.lower() == 'none':
-            return torch.zeros_like(hidden_state) ## Context vector would be the zeros vector, no attention
+            return torch.zeros_like(hidden_state).unsqueeze(1) ## Context vector would be the zeros vector, no attention
 
         attention_energies_unnormalized = self.score(hidden_state, encoder_outputs) #[batch_size , seq_len]
         attention_weights = F.softmax(attention_energies_unnormalized , dim=1)
-        context_vector = torch.bmm(attention_weights.unsqueeze(1) , encoder_outputs).squeeze(1) ## [batch_size , hidden_size]
+        context_vector = torch.bmm(attention_weights.unsqueeze(1) , encoder_outputs) ## [batch_size, seq_len=1 , hidden_size]
 
         return context_vector
 
@@ -55,8 +55,7 @@ class attention(nn.Module):
         elif self.attn_model.lower() == 'bilinear':
             w_mat = self.w.unsqueeze(0).repeat(encoder_outputs.size(0) , 1 , 1)
             hidden_encoder = torch.bmm(w_mat , hidden_state.unsqueeze(-1))
-            attention_energies_unnormalized = torch.bmm(encoder_outputs , hidden_encoder).squeeze(-1) ## batch_size , ip_seq_len
-            
+            attention_energies_unnormalized = torch.bmm(encoder_outputs , hidden_encoder).squeeze(-1) ## batch_size , ip_seq_len   
 
         return attention_energies_unnormalized
 
@@ -80,19 +79,16 @@ class decoderAttn(nn.Module):
         
     def forward(self, encoding_output, input_token_v , hidden_state):
         
-        ## input_token_v is a tensor of shape [batch_size]
+        ## input_token_v is a tensor of shape [batch_size,1]
         ## hidden_state is of shape [n_layers_decoding, batch_size, hidden_size]
         
-        context_vector = self.attention(encoding_output , hidden_state[-1]) ## [batch_size , hidden_size]
-        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) , p=self.dropout) ## [batch_size , embedding_size]
-        rnn_input = torch.cat([input_vector , context_vector] , dim=1).unsqueeze(1) ## [batch_size, seq_len=1 ,embedding_size]
+        context_vector = self.attention(encoding_output , hidden_state[-1]) ## [batch_size, seq_len=1, hidden_size]
+        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) , p=self.dropout) ## [batch_size, seq_len=1 , embedding_size]
+        rnn_input = torch.cat([input_vector , context_vector] , dim=2) ## [batch_size, seq_len=1 ,embedding_size + hidden_size]
 
-        op, next_hidden_states = self.rnn(rnn_input , hidden_state)
-        
-        op = op.squeeze(1) ## [batch_size , hidden_size]
-        fc_output = torch.cat([op , context_vector] , dim=1)
-
-        scores = self.fc(fc_output) ## [batch_size , output_vocab_size]
+        op, next_hidden_states = self.rnn(rnn_input , hidden_state) ## op: [batch_size, seq_len=1, hidden_size]
+        fc_output = torch.cat([op , context_vector] , dim=2) ## [batch_size , seq_len=1, hidden_size*2]
+        scores = self.fc(fc_output) ## [batch_size ,seq_len=1, output_vocab_size]
         
         return scores , next_hidden_states 
 

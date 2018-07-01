@@ -24,9 +24,9 @@ class encoder_RNN(nn.Module):
 
         if self.bidirectional:
             ## Add contributions from both directions. 
-            ## Can also try concatenating, but decoder hidden size should be doubled.
-            encoding_output = encoding_output[:,:,:self.hidden_size] + encoding_output[:,:,self.hidden_size:] 
-            last_hidden = last_hidden[0:2:,:,:] + last_hidden[1:2:,:,:]
+            ## Can also try torch.cat, but decoder hidden size should be doubled.
+            encoding_output = torch.sum(encoding_output[:,:,:self.hidden_size] , encoding_output[:,:,self.hidden_size:])
+            last_hidden = torch.sum(last_hidden[0:2:,:,:] , last_hidden[1:2:,:,:])
 
         return encoding_output , last_hidden
 
