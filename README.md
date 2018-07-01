@@ -16,7 +16,7 @@ from the home folder.
 ## Architecture Details
 * The architecture follows a similar pattern to [Bahadanau et. al.](https://arxiv.org/abs/1409.0473). A deep GRU model is used as an encoder, and another deep GRU model is used to decode and output a meaningful translation. 
 * Batch processing is possible, and all sentences in a batch are pre processed to be of almost equal length. 
-* _Masked cross entropy loss_ is implemented at the decoder, where any tokens padded for ease of batch processing are excluded in computing the loss, making use of pytorch's [pack_padded_sequence and pad_packed_sequence](https://gist.github.com/Tushar-N/dfca335e370a2bc3bc79876e6270099e).
+* _Masked cross entropy loss_ is implemented at the decoder, where any tokens padded for ease of batch processing are excluded in computing the loss.
 
 ## Attention module
 The different kinds of attention model implemented are 
