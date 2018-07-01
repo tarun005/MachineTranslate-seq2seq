@@ -37,12 +37,12 @@ class Config():
 	n_layers_decoding=2
 	bidirectional=True
 	teacher_forcing_ratio = 0.5
-	batch_size = 32
+	batch_size = 128
 	lr = 5e-4
 	dropout = 0.4
 	embedding_size=256
 	hidden_size=256
-	max_source_len = 20
+	max_source_len = 15
 	max_target_len = 20
 	min_word_freq = 1 ## Common for both the vocab
 	train_size = 0.98 ## Fraction for train data

@@ -35,7 +35,7 @@ def give_idx_to_phrase(config, vocab, inp_idx, target=True):
 
 def generate_translation(input_string, config, encoder, decoder, vocab):
 
-    input_string = preprocess_string(input_string)
+    input_string = preprocess_string(input_string)[0] ## Only one string at a time
 
     with torch.no_grad():
         input_idx = [vocab[config.source].get(word , vocab[config.source][config.unknown_tok])
@@ -78,8 +78,9 @@ def BLEU_score(config, gt_caption, sample_caption):
     sample_caption: string or list of strings, model's predicted caption
     Returns batch sum of unigram BLEU score.
     """
-    gt = preprocess_string(gt)
-    sample = preprocess_string(sample)
+    gt_caption = preprocess_string(gt_caption)
+    sample_caption = preprocess_string(sample_caption)
+    assert(isinstance(gt_caption , list) and isinstance(sample_caption,list))
     bleu_scores = 0
 
     for gt , sample in zip(gt_caption , sample_caption):
