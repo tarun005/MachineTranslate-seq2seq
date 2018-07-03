@@ -16,8 +16,8 @@ SS: a cet egard  le role de la publicite est ambivalent
 GT: in this respect  the role of advertising is ambivalent  
 PT: in this respect the role role role of advertising is is ambivalent ambivalent  
 
-SS: avant le vote sur le paragraphe <d>  
-GT: before the vote on paragraph <d>  
+SS: avant le vote sur le paragraphe < d >    
+GT: before the vote on paragraph < d >  
 PT: before the vote on paragraph < d >  
  
 SS: nous avions foi dans les objectifs fixes  
