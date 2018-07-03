@@ -37,7 +37,7 @@ class Config():
 	n_layers_decoding=2
 	bidirectional=True
 	teacher_forcing_ratio = 0.5
-	batch_size = 128
+	batch_size = 64
 	lr = 5e-4
 	dropout = 0.4
 	embedding_size=256
