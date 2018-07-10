@@ -47,7 +47,7 @@ class attention(nn.Module):
         elif self.attn_model.lower() == 'linear':
             hidden_state = hidden_state.unsqueeze(1).repeat(1 , encoder_outputs.size(1) ,1)
             fc_input = torch.cat([hidden_state , encoder_outputs] , dim=2) ## batch_size , ip_seq_len , 2*hidden_size
-            interm_op = F.relu(self.attn(fc_input)) ## batch_size , ip_seq_len , hidden_size
+            interm_op = F.tanh(self.attn(fc_input)) ## batch_size , ip_seq_len , hidden_size
 
             v_mat = self.v.repeat(encoder_outputs.size(0) , 1).unsqueeze(-1) ## batch_size , hidden_size ,1
             attention_energies_unnormalized = torch.bmm(interm_op , v_mat).squeeze(-1) ## batch_size , ip_seq_len
@@ -83,7 +83,7 @@ class decoderAttn(nn.Module):
         ## hidden_state is of shape [n_layers_decoding, batch_size, hidden_size]
         
         context_vector = self.attention(encoding_output , hidden_state[-1]) ## [batch_size, seq_len=1, hidden_size]
-        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) , p=self.dropout) ## [batch_size, seq_len=1 , embedding_size]
+        input_vector = F.dropout(F.relu(self.embedding(input_token_v)) , p=self.dropout, training=self.training) ## [batch_size, seq_len=1 , embedding_size]
         rnn_input = torch.cat([input_vector , context_vector] , dim=2) ## [batch_size, seq_len=1 ,embedding_size + hidden_size]
 
         op, next_hidden_states = self.rnn(rnn_input , hidden_state) ## op: [batch_size, seq_len=1, hidden_size]

@@ -15,7 +15,7 @@ class encoder_RNN(nn.Module):
         
     def forward(self, input_wv, seq_len):
         
-        ip = F.dropout(self.embedding(input_wv) , p=self.dropout)
+        ip = F.dropout(self.embedding(input_wv) , p=self.dropout , training=self.training)
         packed_ip_seq = nn.utils.rnn.pack_padded_sequence(ip , seq_len , batch_first=True)
 
         ## https://pytorch.org/docs/stable/nn.html#torch.nn.GRU

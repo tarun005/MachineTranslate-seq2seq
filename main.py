@@ -34,19 +34,19 @@ class Config():
 	delimiter = '\t'
 
 	n_layers_encoding=2
-	n_layers_decoding=2
+	n_layers_decoding=1
 	bidirectional=True
 	teacher_forcing_ratio = 0.5
 	batch_size = 64
 	lr = 5e-4
 	dropout = 0.4
 	embedding_size=256
-	hidden_size=256
-	max_source_len = 15
+	hidden_size=128
+	max_source_len = 18
 	max_target_len = 20
 	min_word_freq = 1 ## Common for both the vocab
 	train_size = 0.98 ## Fraction for train data
-	n_epochs = 40
+	n_epochs = 25
 
 	## Use GPU
 	device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

@@ -4,7 +4,7 @@ import sys
 import random
 import matplotlib.pyplot as plt
 from evaluate import give_idx_to_phrase , generate_translation, BLEU_score
-from tqdm import tqdm
+from tqdm import tqdm_notebook as tqdm
 
 
 def train(data, config, encoder , decoder , encoder_optimizer, decoder_optimizer , loss_criterion, n_epochs=7):
