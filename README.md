@@ -1,4 +1,4 @@
-# Machine Translation using Sequence2Sequence Deep Learning Models
+# Machine Translation using Sequence to sequence Deep Learning Models
 PyTorch implementation of basic sequence to sequence (seq2seq) encoder-decoder architecture for machine translation.
 
 ## Sample FR-EN translations: 
